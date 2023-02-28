@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using TMPro;
 using Unity.VisualScripting;
@@ -23,6 +24,11 @@ public class NetBehaviour : MonoBehaviour {
 
     TMP_Text scoreText;
     int score = 0;
+
+    //Display High Score
+    TMP_Text highScoreText;
+    [SerializeField] private ScoreData scoreData;
+    int highScore = 0;
 
     TMP_Text GameOverText;
 
@@ -52,7 +58,14 @@ public class NetBehaviour : MonoBehaviour {
             Droppable.Add(i);
             objectIndexDictionary.Add(DroppingObjects[i], i);
         }
+
+        scoreData = new ScoreData();
+
+        highScore = LoadScore();
+
         scoreText = GameObject.Find("Score").GetComponent<TMP_Text>();
+        highScoreText = GameObject.Find("HighScore").GetComponent<TMP_Text>();
+
         GameOverText = GameObject.Find("GameOver").GetComponent<TMP_Text>();
         StartText = GameObject.Find("StartMenu").GetComponent<TMP_Text>();
 
@@ -61,10 +74,6 @@ public class NetBehaviour : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        //get Net to move with mouse
-        /*if (Math.Abs(Camera.main.ScreenToWorldPoint(Input.mousePosition).x) < 7.5 && !GameOver) {
-            transform.position = new Vector3(Camera.main.ScreenToWorldPoint(Input.mousePosition).x, transform.position.y, transform.position.z);
-        }*/
         float axis = Input.GetAxis("Horizontal");
         if (transform.position.x > 7.5f) {
             if (axis > 0) {
@@ -81,6 +90,7 @@ public class NetBehaviour : MonoBehaviour {
         }
 
         scoreText.text = "Score: " + score;
+        highScoreText.text = "High Score: " + highScore;
 
         timer -= Time.deltaTime;
 
@@ -127,8 +137,10 @@ public class NetBehaviour : MonoBehaviour {
         //Timer that resets scene
         if (GameOver) {
             GameOverDelay -= Time.deltaTime;
-            if (GameOverDelay <= 0 || Input.GetKeyDown("space"))
+            if (GameOverDelay <= 0 || Input.GetKeyDown("space")) {
+                SaveScore(score);
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            }
         }
 
         //For player to quite game
@@ -184,4 +196,28 @@ public class NetBehaviour : MonoBehaviour {
             GameOverText.enabled = true;
         }
     }
+
+    //If player gets a new high score, it gets saved to the JSON file
+    public void SaveScore(int score) {
+        if (score > scoreData.highScore) {
+            scoreData.highScore = score;
+
+            string data = JsonUtility.ToJson(scoreData);
+
+            File.WriteAllText(Application.persistentDataPath + "/scoreSheet.json", data);
+        }
+    }
+    //Load recent High score from JSON file
+    public int LoadScore() {
+        if (File.Exists(Application.persistentDataPath + "/scoreSheet.json") && File.ReadAllText(Application.persistentDataPath + "/scoreSheet.json") != "{}") {
+            scoreData = JsonUtility.FromJson<ScoreData>(File.ReadAllText(Application.persistentDataPath + "/scoreSheet.json"));
+            return scoreData.highScore;
+        }
+        return 0;
+    }
+}
+
+//Allows local game to save current High score
+[System.Serializable] public class ScoreData {
+    public int highScore;
 }
